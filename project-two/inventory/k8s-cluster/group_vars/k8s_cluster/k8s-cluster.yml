@@ -1,0 +1,12 @@
+---
+kube_version: v1.28.6
+kube_network_plugin: calico
+
+# CRITICAL REQUIREMENT: Disable NGINX Ingress Controller so Traefik can be used instead
+ingress_nginx_enabled: false
+
+# Enable Helm for add-on installations
+helm_enabled: true
+
+# Kubernetes Audit Logging
+kubernetes_audit: true

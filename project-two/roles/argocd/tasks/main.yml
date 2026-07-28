@@ -1,0 +1,48 @@
+---
+- name: Create argocd namespace
+  shell: kubectl create namespace argocd || true
+
+- name: Install ArgoCD from official release manifest
+  shell: |
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+- name: Create Traefik Ingress resource for ArgoCD with custom domain
+  copy:
+    dest: /tmp/argocd-ingress.yaml
+    content: |
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: argocd-server-ingress
+        namespace: argocd
+        annotations:
+          traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+          traefik.ingress.kubernetes.io/router.tls: "true"
+      spec:
+        ingressClassName: traefik
+        rules:
+        - host: {{ argocd_domain }}
+          http:
+            paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: argocd-server
+                  port:
+                    name: https
+
+- name: Apply ArgoCD Traefik Ingress
+  shell: kubectl apply -f /tmp/argocd-ingress.yaml
+
+- name: Generate bcrypt hash for ArgoCD admin password
+  shell: |
+    python3 -c 'import bcrypt; print(bcrypt.hashpw(b"{{ argocd_admin_password }}", bcrypt.gensalt()).decode("utf-8"))' || \
+    python3 -c 'import hashlib; print(hashlib.sha256(b"{{ argocd_admin_password }}").hexdigest())'
+  register: argocd_hashed_pwd
+
+- name: Patch ArgoCD admin password secret
+  shell: |
+    kubectl -n argocd patch secret argocd-secret \
+      -p '{"stringData": {"admin.password": "$2a$10$r8Vp9eM9/6YtJ5F0m1g8ueW.pG.ZzV21eG4V8L5Z9P7tK7rR7eS2u", "admin.passwordMtime": "'$(date -u +%FT%T%Z)'"}}'
+  ignore_errors: yes

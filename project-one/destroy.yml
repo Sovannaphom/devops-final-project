@@ -1,0 +1,78 @@
+---
+- name: Teardown Machine01 Services
+  hosts: machine01
+  become: yes
+  tasks:
+    - name: Stop and remove Nginx service
+      service:
+        name: nginx
+        state: stopped
+      ignore_errors: yes
+
+    - name: Stop and remove Jenkins container & volume
+      docker_container:
+        name: jenkins
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove Jenkins home Docker volume
+      docker_volume:
+        name: jenkins_home
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove Jenkins custom build dir
+      file:
+        path: /opt/jenkins-custom
+        state: absent
+
+    - name: Remove glab binary
+      file:
+        path: /usr/local/bin/glab
+        state: absent
+
+- name: Teardown Machine02 Services
+  hosts: machine02
+  become: yes
+  tasks:
+    - name: Stop SonarQube docker compose stack
+      shell: docker compose down -v
+      args:
+        chdir: /opt/sonarqube
+      ignore_errors: yes
+
+    - name: Remove SonarQube directory
+      file:
+        path: /opt/sonarqube
+        state: absent
+
+- name: Teardown Machine03 Services
+  hosts: machine03
+  become: yes
+  tasks:
+    - name: Stop Nexus docker compose stack
+      shell: docker compose down -v
+      args:
+        chdir: /opt/nexus
+      ignore_errors: yes
+
+    - name: Remove Nexus directory
+      file:
+        path: /opt/nexus
+        state: absent
+
+- name: Teardown Common Containers (Portainer) Across All Machines
+  hosts: all_nodes
+  become: yes
+  tasks:
+    - name: Stop and remove Portainer container
+      docker_container:
+        name: portainer
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove Portainer data volume
+      docker_volume:
+        name: portainer_data
+        state: absent
+      ignore_errors: yes

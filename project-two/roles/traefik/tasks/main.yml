@@ -1,0 +1,32 @@
+---
+- name: Ensure Helm is installed
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add Traefik Helm repository
+  kubernetes.core.helm_repository:
+    name: traefik
+    repo_url: "https://traefik.github.io/charts"
+  ignore_errors: yes
+
+- name: Create traefik namespace
+  kubernetes.core.k8s:
+    name: traefik
+    api_version: v1
+    kind: Namespace
+    state: present
+  ignore_errors: yes
+
+- name: Deploy Traefik Ingress Controller via Helm
+  shell: |
+    helm repo add traefik https://traefik.github.io/charts
+    helm repo update
+    helm upgrade --install traefik traefik/traefik \
+      --namespace traefik \
+      --create-namespace \
+      --set ingressClass.enabled=true \
+      --set ingressClass.isDefaultClass=true \
+      --set ports.web.port=80 \
+      --set ports.websecure.port=443

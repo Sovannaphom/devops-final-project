@@ -1,0 +1,50 @@
+---
+- name: Add Headlamp Helm repository
+  shell: |
+    helm repo add headlamp https://headlamp-k8s.github.io/headlamp/
+    helm repo update
+
+- name: Create headlamp namespace
+  kubernetes.core.k8s:
+    name: headlamp
+    api_version: v1
+    kind: Namespace
+    state: present
+  ignore_errors: yes
+
+- name: Deploy Headlamp Kubernetes Dashboard via Helm
+  shell: |
+    helm upgrade --install headlamp headlamp/headlamp \
+      --namespace headlamp \
+      --create-namespace \
+      --set ingress.enabled=true \
+      --set ingress.ingressClassName=traefik \
+      --set ingress.hosts[0].host={{ headlamp_domain }} \
+      --set ingress.hosts[0].paths[0].path="/" \
+      --set ingress.hosts[0].paths[0].pathType="Prefix"
+
+- name: Create Headlamp Admin ServiceAccount & ClusterRoleBinding
+  copy:
+    dest: /tmp/headlamp-admin.yaml
+    content: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: headlamp-admin
+        namespace: headlamp
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: headlamp-admin
+      subjects:
+      - kind: ServiceAccount
+        name: headlamp-admin
+        namespace: headlamp
+      roleRef:
+        kind: ClusterRole
+        name: cluster-admin
+        apiGroup: rbac.authorization.k8s.io
+
+- name: Apply Headlamp admin permissions
+  shell: kubectl apply -f /tmp/headlamp-admin.yaml

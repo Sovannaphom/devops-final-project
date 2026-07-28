@@ -1,0 +1,56 @@
+---
+- name: Create Jenkins custom image build directory
+  file:
+    path: /opt/jenkins-custom
+    state: directory
+    mode: '0755'
+
+- name: Create Dockerfile for Jenkins with Docker, Docker Compose, glab, and Ansible
+  copy:
+    dest: /opt/jenkins-custom/Dockerfile
+    content: |
+      FROM jenkins/jenkins:lts-jdk17
+      USER root
+      RUN apt-get update && apt-get install -y \
+          curl \
+          git \
+          wget \
+          gnupg \
+          lsb-release \
+          python3 \
+          python3-pip \
+          python3-venv \
+          software-properties-common && \
+          curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
+          apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin && \
+          pip3 install --no-cache-dir ansible --break-system-packages || pip3 install --no-cache-dir ansible && \
+          curl -fsSL -o /tmp/glab.deb https://gitlab.com/gitlab-org/cli/-/releases/v1.36.0/downloads/glab_1.36.0_linux_amd64.deb && dpkg -i /tmp/glab.deb || true && rm -f /tmp/glab.deb && \
+          rm -rf /var/lib/apt/lists/*
+      USER jenkins
+
+- name: Build custom Jenkins Docker image
+  docker_image:
+    name: jenkins-devops
+    tag: latest
+    build:
+      path: /opt/jenkins-custom
+    source: build
+
+- name: Create Docker volume for Jenkins home
+  docker_volume:
+    name: jenkins_home
+    state: present
+
+- name: Deploy custom Jenkins container
+  docker_container:
+    name: jenkins
+    image: jenkins-devops:latest
+    state: started
+    restart_policy: always
+    published_ports:
+      - "{{ jenkins_http_port }}:8080"
+      - "{{ jenkins_agent_port }}:50000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins_home:/var/jenkins_home

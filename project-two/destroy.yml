@@ -1,0 +1,6 @@
+---
+- name: Reset Kubernetes Cluster via Kubespray
+  import_playbook: /opt/kubespray/reset.yml
+  vars:
+    ansible_inventory_sources: [ "{{ playbook_dir }}/inventory/k8s-cluster/hosts.yaml" ]
+    reset_confirmation: yes

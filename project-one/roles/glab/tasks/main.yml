@@ -1,0 +1,17 @@
+---
+- name: Download glab deb package from GitLab releases
+  get_url:
+    url: https://gitlab.com/gitlab-org/cli/-/releases/v1.36.0/downloads/glab_1.36.0_linux_amd64.deb
+    dest: /tmp/glab.deb
+    mode: '0644'
+  ignore_errors: yes
+
+- name: Install glab deb package
+  apt:
+    deb: /tmp/glab.deb
+    state: present
+  ignore_errors: yes
+
+
+
+

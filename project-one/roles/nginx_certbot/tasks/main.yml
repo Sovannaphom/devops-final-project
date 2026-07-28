@@ -1,0 +1,69 @@
+---
+- name: Install Nginx and Certbot with python3-certbot-nginx
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Create SSL certificate directory for fallback self-signed certificates
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+    mode: '0755'
+
+- name: Generate fallback self-signed SSL certs for services
+  command: >
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048
+    -keyout /etc/nginx/ssl/server.key
+    -out /etc/nginx/ssl/server.crt
+    -subj "/CN=*.devops.lab/O=DevOps/C=US"
+  args:
+    creates: /etc/nginx/ssl/server.crt
+
+- name: Configure Nginx site configuration for Jenkins reverse proxy
+  template:
+    src: jenkins.conf.j2
+    dest: /etc/nginx/sites-available/jenkins.conf
+
+- name: Configure Nginx site configuration for SonarQube reverse proxy
+  template:
+    src: sonarqube.conf.j2
+    dest: /etc/nginx/sites-available/sonarqube.conf
+
+- name: Configure Nginx site configuration for Nexus reverse proxy
+  template:
+    src: nexus.conf.j2
+    dest: /etc/nginx/sites-available/nexus.conf
+
+- name: Enable Nginx sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ item }}.conf"
+    state: link
+  loop:
+    - jenkins
+    - sonarqube
+    - nexus
+
+- name: Remove default Nginx site link
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Reload Nginx service
+  service:
+    name: nginx
+    state: reloaded
+    enabled: yes
+
+- name: Attempt Certbot SSL certificate issuance (if public domain is configured)
+  command: >
+    certbot --nginx -d {{ item }} --non-interactive --agree-tos --email {{ certbot_admin_email }}
+  loop:
+    - "{{ jenkins_domain }}"
+    - "{{ sonarqube_domain }}"
+    - "{{ nexus_domain }}"
+  ignore_errors: yes

@@ -1,0 +1,29 @@
+---
+- name: Apply Common Base Configuration to All Machines
+  hosts: all_nodes
+  become: yes
+  roles:
+    - common
+    - ohmyzsh
+    - docker
+    - portainer
+
+- name: Provision Machine01 (Jenkins, glab, Ansible, Reverse Proxy + HTTPS)
+  hosts: machine01
+  become: yes
+  roles:
+    - glab
+    - jenkins
+    - nginx_certbot
+
+- name: Provision Machine02 (SonarQube)
+  hosts: machine02
+  become: yes
+  roles:
+    - sonarqube
+
+- name: Provision Machine03 (Nexus Repository Manager with Docker and Helm Blobs)
+  hosts: machine03
+  become: yes
+  roles:
+    - nexus

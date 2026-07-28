@@ -1,0 +1,108 @@
+---
+- name: Create Nexus deploy directory
+  file:
+    path: /opt/nexus
+    state: directory
+    mode: '0755'
+
+- name: Create docker-compose.yml for Nexus 3
+  copy:
+    dest: /opt/nexus/docker-compose.yml
+    content: |
+      version: '3.8'
+
+      services:
+        nexus:
+          image: sonatype/nexus3:latest
+          container_name: nexus
+          restart: always
+          ports:
+            - "{{ nexus_http_port }}:8081"
+            - "{{ nexus_docker_repo_port }}:8082"
+          volumes:
+            - nexus_data:/nexus-data
+
+      volumes:
+        nexus_data:
+
+- name: Start Nexus stack using docker compose
+  shell: docker compose up -d
+  args:
+    chdir: /opt/nexus
+
+- name: Wait for Nexus to start up and listen on port 8081
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ nexus_http_port }}"
+    delay: 15
+    timeout: 300
+
+- name: Ensure Nexus script directory exists
+  file:
+    path: /opt/nexus/scripts
+    state: directory
+    mode: '0755'
+
+- name: Create Nexus repository setup python script
+  copy:
+    dest: /opt/nexus/scripts/configure_nexus.py
+    mode: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import time, os, sys, urllib.request, json, base64
+
+      admin_password_file = '/var/lib/docker/volumes/nexus_data/_data/admin.password'
+      nexus_url = 'http://127.0.0.1:8081'
+
+      # Helper for API requests
+      def make_request(url, data=None, headers=None, method='GET'):
+          req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+          try:
+              with urllib.request.urlopen(req) as response:
+                  return response.status, response.read().decode('utf-8')
+          except urllib.error.HTTPError as e:
+              return e.code, e.read().decode('utf-8')
+
+      # Check if admin password file exists (initial password)
+      auth_header = None
+      if os.path.exists(admin_password_file):
+          with open(admin_password_file, 'r') as f:
+              pwd = f.read().strip()
+          cred = base64.b64encode(f"admin:{pwd}".encode()).decode()
+          auth_header = {"Authorization": f"Basic {cred}", "Content-Type": "application/json"}
+      else:
+          cred = base64.b64encode(b"admin:admin").decode()
+          auth_header = {"Authorization": f"Basic {cred}", "Content-Type": "application/json"}
+
+      # Create docker-blob store
+      blob_docker = json.dumps({"name": "docker-blob", "path": "docker-blob"}).encode('utf-8')
+      make_request(f"{nexus_url}/service/rest/v1/blobstores/file", data=blob_docker, headers=auth_header, method='POST')
+
+      # Create helm-blob store
+      blob_helm = json.dumps({"name": "helm-blob", "path": "helm-blob"}).encode('utf-8')
+      make_request(f"{nexus_url}/service/rest/v1/blobstores/file", data=blob_helm, headers=auth_header, method='POST')
+
+      # Create Docker Hosted Repository
+      docker_repo = json.dumps({
+          "name": "docker-hosted",
+          "online": True,
+          "storage": {"blobStoreName": "docker-blob", "strictContentTypeValidation": True, "writePolicy": "allow"},
+          "docker": {"v1Enabled": False, "forceBasicAuth": True, "httpPort": 8082}
+      }).encode('utf-8')
+      make_request(f"{nexus_url}/service/rest/v1/repositories/docker/hosted", data=docker_repo, headers=auth_header, method='POST')
+
+      # Create Helm Hosted Repository
+      helm_repo = json.dumps({
+          "name": "helm-hosted",
+          "online": True,
+          "storage": {"blobStoreName": "helm-blob", "strictContentTypeValidation": True, "writePolicy": "allow"}
+      }).encode('utf-8')
+      make_request(f"{nexus_url}/service/rest/v1/repositories/helm/hosted", data=helm_repo, headers=auth_header, method='POST')
+
+      print("Nexus blobstores and repositories configured successfully!")
+
+- name: Run Nexus repository auto-configuration script
+  command: python3 /opt/nexus/scripts/configure_nexus.py
+  register: nexus_config_result
+  failed_when: false
+  changed_when: "'configured successfully' in nexus_config_result.stdout"

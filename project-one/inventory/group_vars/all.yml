@@ -1,0 +1,29 @@
+---
+# Global Project Configuration Variables
+
+# Domain names for services (Update these to your domain or test domains)
+jenkins_domain: "jenkins.devops.lab"
+sonarqube_domain: "sonarqube.devops.lab"
+nexus_domain: "nexus.devops.lab"
+
+# Admin email for Let's Encrypt SSL (Certbot)
+certbot_admin_email: "admin@devops.lab"
+use_self_signed_ssl_fallback: true
+
+# Service Ports & Endpoints
+jenkins_http_port: 8080
+jenkins_agent_port: 50000
+
+sonarqube_http_port: 9000
+sonarqube_db_password: "SonarSecurePass123!"
+
+nexus_http_port: 8081
+nexus_admin_password: "admin"
+nexus_docker_repo_port: 8082
+nexus_helm_repo_name: "helm-hosted"
+nexus_docker_repo_name: "docker-hosted"
+
+# Network Internal IPs
+machine01_ip: "10.128.0.2"
+machine02_ip: "10.128.0.3"
+machine03_ip: "10.128.0.4"

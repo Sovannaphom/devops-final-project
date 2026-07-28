@@ -1,0 +1,27 @@
+---
+- name: Install Git, Python3, and pip on control host
+  apt:
+    name:
+      - git
+      - python3-pip
+      - python3-venv
+      - curl
+    state: present
+
+- name: Check if Kubespray repository exists
+  stat:
+    path: /opt/kubespray
+  register: kubespray_dir
+
+- name: Clone Kubespray repository
+  git:
+    repo: 'https://github.com/kubernetes-sigs/kubespray.git'
+    dest: /opt/kubespray
+    version: 'release-2.24'
+    force: yes
+
+- name: Install Kubespray python requirements
+  pip:
+    requirements: /opt/kubespray/requirements.txt
+    extra_args: --break-system-packages
+  ignore_errors: yes
