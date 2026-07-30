@@ -25,14 +25,25 @@ Automated Ansible project to install an HA Kubernetes Cluster using **Kubespray*
 
 ## How to Run
 
-### 1. Deploy HA Kubernetes Cluster & Addons
+> **WSL / Linux Note:** On WSL (Windows Subsystem for Linux), drives mounted under `/mnt/c/` are world-writable (`0777`). Ansible automatically ignores local `ansible.cfg` in world-writable directories for security unless `export ANSIBLE_CONFIG=ansible.cfg` is executed in your terminal prior to running `ansible-playbook`.
+
+### 1. Initial Setup (Clone & Link Kubespray Dependencies)
+*(Required on first run so `/opt/kubespray/cluster.yml` and role symlinks exist. Use `-K` to enter your local sudo password)*
 ```bash
-ansible-playbook -i inventory/k8s-cluster/hosts.yaml deploy.yml
+export ANSIBLE_CONFIG=ansible.cfg
+ansible-playbook -K prep.yml
 ```
 
-### 2. Teardown / Reset Cluster
+### 2. Deploy HA Kubernetes Cluster & Addons
 ```bash
-ansible-playbook -i inventory/k8s-cluster/hosts.yaml destroy.yml
+export ANSIBLE_CONFIG=ansible.cfg
+ansible-playbook -K -i inventory/k8s-cluster/hosts.yaml deploy.yml
+```
+
+### 3. Teardown / Reset Cluster
+```bash
+export ANSIBLE_CONFIG=ansible.cfg
+ansible-playbook -K -i inventory/k8s-cluster/hosts.yaml destroy.yml
 ```
 
 ---
@@ -47,12 +58,12 @@ ansible-playbook -i inventory/k8s-cluster/hosts.yaml destroy.yml
   ```
 
 ### ArgoCD GitOps UI
-- **URL:** `http://argocd.k8s.lab`
+- **URL:** ` bb`
 - **Username:** `admin`
 - **Password:** `ArgoAdminPassword123!`
 
 ---
-
+ 
 ## Domain Resolution Setup (Local Testing)
 Add the following entries to your workstation's `/etc/hosts` file (or C:\Windows\System32\drivers\etc\hosts):
 ```text

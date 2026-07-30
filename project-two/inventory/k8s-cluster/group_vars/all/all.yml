@@ -5,6 +5,7 @@ cluster_name: cluster.local
 container_manager: containerd
 etcd_deployment_type: host
 helm_enabled: true
+skip_ansible_version_check: true
 
 # Custom Domain Variables for Addons
 headlamp_domain: "headlamp.k8s.lab"

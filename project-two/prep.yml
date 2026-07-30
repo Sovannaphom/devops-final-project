@@ -1,0 +1,7 @@
+---
+- name: Prepare Kubespray Dependencies
+  hosts: localhost
+  connection: local
+  become: yes
+  roles:
+    - kubespray_prep

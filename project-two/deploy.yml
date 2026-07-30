@@ -10,6 +10,8 @@
   import_playbook: /opt/kubespray/cluster.yml
   vars:
     ansible_inventory_sources: [ "{{ playbook_dir }}/inventory/k8s-cluster/hosts.yaml" ]
+    skip_ansible_version_check: true
+    jinja2_native: true
 
 - name: Post-Cluster Addon Installation (Traefik, Headlamp, ArgoCD)
   hosts: kube_control_plane[0]

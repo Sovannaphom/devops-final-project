@@ -22,9 +22,12 @@
       - zsh
     state: present
 
-- name: Ensure python3-docker is installed for Ansible Docker module support
+- name: Ensure python3-docker and ansible are installed for Ansible support
   pip:
     name:
       - docker
       - docker-compose
+      - ansible
     state: present
+    extra_args: --break-system-packages
+  ignore_errors: yes

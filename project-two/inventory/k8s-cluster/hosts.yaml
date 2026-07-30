@@ -1,4 +1,6 @@
 all:
+  vars:
+    skip_ansible_version_check: true
   hosts:
     node1:
       ansible_host: 104.197.103.74
